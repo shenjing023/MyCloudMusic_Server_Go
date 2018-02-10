@@ -1,0 +1,2 @@
+# MyCloudMusic_Server_Go
+MyCloudMusic的服务端，基于golang
