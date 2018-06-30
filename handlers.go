@@ -1,60 +1,92 @@
 package main
 
 import (
-	"net/http"
-	"github.com/julienschmidt/httprouter"
+	"errors"
 	"fmt"
+	"github.com/julienschmidt/httprouter"
+	"net/http"
 	"strconv"
 )
 
 type Argument struct {
-	name string
-	required bool
-	dataType  string
+	name     string
+	dataType string
 }
 
 type Resource []Argument
 
-func (r *Resource) addArgument(name string,required bool,dataType string)  {
-	arg:=Argument{
-		name:name,
-		required:required,
-		dataType:dataType,
+// 添加请求的参数
+func (r *Resource) addArgument(name string, dataType string) error {
+	// 参数的类型只能是string或int
+	if dataType != "string" && dataType != "int" {
+		return errors.New("dataType must be int or string")
 	}
-	*r=append(*r,arg)
+	// 参数名称不能为空
+	if name == "" {
+		return errors.New("name cannot be empty")
+	}
+	arg := Argument{
+		name:     name,
+		dataType: dataType,
+	}
+	*r = append(*r, arg)
+	return nil
+}
+
+// 解析参数
+func (r *Resource) parseArgs(values map[string][]string) ([]string) {
+	var errorMsg []string
+	for _, arg := range *r {
+		// 查看参数是否存在
+		if _, ok := values[arg.name]; !ok {
+			// 不存在
+			errorMsg = append(errorMsg, "Missing required parameter "+arg.name)
+		} else {
+			if msg, err := arg.parse(values[arg.name]); err != nil {
+				errorMsg = append(errorMsg, msg)
+			}
+		}
+	}
+	return errorMsg
 }
 
 var search Resource
 
-func init()  {
-	search.addArgument("",true,"")
+func init() {
+	search.addArgument("a", "int")
 }
 
-func (arg *Argument)parse()  {
-
-}
-
-func parseArgs(args []Argument)  {
-
-}
-
-
-func Index(w http.ResponseWriter,r *http.Request,_ httprouter.Params){
-	fmt.Fprint(w,"hello world")
-}
-
-//搜索
-func Searc1h(w http.ResponseWriter,r *http.Request,_ httprouter.Params)  {
-	queryValues:=r.URL.Query()
-	//source
-	source:=queryValues.Get("source")
-	if source==""{
-		fmt.Fprintf(w,"source 必须")
-	} else {
-		if s,err:=strconv.Atoi(source);err!=nil{
-			fmt.Fprintf(w,"%s",err.Error())
-		} else {
-			fmt.Fprintf(w,"%d",s)
+func (arg *Argument) parse(values []string) (string, error) {
+	if arg.dataType == "int" {
+		if _, err := strconv.Atoi(values[0]); err != nil {
+			return values[0]+" cannot convert to int", err
 		}
 	}
+	return "", nil
+}
+
+func Index(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	fmt.Fprint(w, "hello world")
+}
+
+// 搜索
+func Search(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errorMsg := search.parseArgs(r.URL.Query()); errorMsg != nil {
+		fmt.Fprint(w,errorMsg)
+	} else {
+
+	}
+
+	// queryValues := r.URL.Query()
+	// // source
+	// source := queryValues.Get("source")
+	// if source == "" {
+	// 	fmt.Fprintf(w, "source 必须")
+	// } else {
+	// 	if s, err := strconv.Atoi(source); err != nil {
+	// 		fmt.Fprintf(w, "%s", err.Error())
+	// 	} else {
+	// 		fmt.Fprintf(w, "%d", s)
+	// 	}
+	// }
 }
