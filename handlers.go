@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MyCloudMusic_Server_Go/api"
 	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
@@ -34,7 +35,7 @@ func (r *Resource) addArgument(name string, dataType string) error {
 }
 
 // 解析参数
-func (r *Resource) parseArgs(values map[string][]string) ([]string) {
+func (r *Resource) parseArgs(values map[string][]string) []string {
 	var errorMsg []string
 	for _, arg := range *r {
 		// 查看参数是否存在
@@ -53,13 +54,17 @@ func (r *Resource) parseArgs(values map[string][]string) ([]string) {
 var search Resource
 
 func init() {
-	search.addArgument("a", "int")
+	search.addArgument("source", "string")
+	search.addArgument("keywords", "string")
+	search.addArgument("ktype", "int")
+	search.addArgument("offset", "int")
+	search.addArgument("limit", "int")
 }
 
 func (arg *Argument) parse(values []string) (string, error) {
 	if arg.dataType == "int" {
 		if _, err := strconv.Atoi(values[0]); err != nil {
-			return values[0]+" cannot convert to int", err
+			return values[0] + " cannot convert to int", err
 		}
 	}
 	return "", nil
@@ -72,21 +77,22 @@ func Index(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 // 搜索
 func Search(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if errorMsg := search.parseArgs(r.URL.Query()); errorMsg != nil {
-		fmt.Fprint(w,errorMsg)
+		fmt.Fprint(w, errorMsg)
 	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+		keywords := queryValues.Get("keywords")
+		ktype, _ := strconv.Atoi(queryValues.Get("ktype"))
+		offset, _ := strconv.Atoi(queryValues.Get("offset"))
+		limit, _ := strconv.Atoi(queryValues.Get("limit"))
 
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.Search(keywords, ktype, offset, limit)
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
 	}
-
-	// queryValues := r.URL.Query()
-	// // source
-	// source := queryValues.Get("source")
-	// if source == "" {
-	// 	fmt.Fprintf(w, "source 必须")
-	// } else {
-	// 	if s, err := strconv.Atoi(source); err != nil {
-	// 		fmt.Fprintf(w, "%s", err.Error())
-	// 	} else {
-	// 		fmt.Fprintf(w, "%d", s)
-	// 	}
-	// }
 }
