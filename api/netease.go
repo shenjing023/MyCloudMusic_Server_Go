@@ -6,10 +6,10 @@ package api
 
 import (
 	"MyCloudMusic_Server_Go/mylog"
-	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -28,7 +28,7 @@ func init() {
 			"Connection":       "keep-alive",
 			"Content-Type":     "application/x-www-form-urlencoded",
 			"Host":             "music.163.com",
-			"Referer":          "http://music.163.com/search",
+			"Referer":          "http://music.163.com",
 			"User-Agent":       "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
 		},
 		client: &http.Client{
@@ -40,18 +40,21 @@ func init() {
 /*
 	设置http请求体，返回http.Request
 */
-func (n *NetEaseApi) newRequest(method, url string, param map[string]interface{}) (*http.Request, error) {
+func (n *NetEaseApi) newRequest(method, _url string, param map[string]interface{}) (*http.Request, error) {
 	var req *http.Request
 
 	if method == "GET" {
-		req, _ = http.NewRequest("GET", url, nil)
+		req, _ = http.NewRequest("GET", _url, nil)
 	} else if method == "POST" {
-		bytesData, err := json.Marshal(param)
+		params, encSeckey, err := encryptoParams(param)
 		if err != nil {
 			mylog.Error(err.Error())
 		}
-		reader := bytes.NewReader(bytesData)
-		req, _ = http.NewRequest("POST", url, reader)
+		form := url.Values{}
+		form.Set("params", params)
+		form.Set("encSeckey", encSeckey)
+		body := strings.NewReader(form.Encode())
+		req, _ = http.NewRequest("POST", _url, body)
 	}
 
 	for k, v := range n.header {
