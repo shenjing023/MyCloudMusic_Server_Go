@@ -46,13 +46,14 @@ func (n *NetEaseApi) newRequest(method, _url string, param map[string]interface{
 	if method == "GET" {
 		req, _ = http.NewRequest("GET", _url, nil)
 	} else if method == "POST" {
-		params, encSeckey, err := encryptoParams(param)
+		params, encSecKey, err := encryptoParams(param)
 		if err != nil {
 			mylog.Error(err.Error())
 		}
+
 		form := url.Values{}
 		form.Set("params", params)
-		form.Set("encSeckey", encSeckey)
+		form.Set("encSecKey", encSecKey)
 		body := strings.NewReader(form.Encode())
 		req, _ = http.NewRequest("POST", _url, body)
 	}
@@ -85,7 +86,7 @@ func (n *NetEaseApi) rawHttpRequest(method, url string, param map[string]interfa
 	搜索单曲(1)，歌手(100)，专辑(10)，歌单(1000)，用户(1002) *(type)*
 */
 func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) ([]byte, error) {
-	url := "http://music.163.com/api/search/get"
+	url := "http://music.163.com/weapi/search/get"
 	var total bool
 	if offset == 0 {
 		total = true

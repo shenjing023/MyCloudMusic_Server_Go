@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 func main() {
 
 	router := NewRouter(allRoutes())
