@@ -22,6 +22,8 @@ func allRoutes() Routes {
 	routes := Routes{
 		Route{"Index", "GET", "/", Index},
 		Route{"Search", "GET", "/search", Search},
+		Route{"Playlist", "GET", "/playlists", PlayList},
+		Route{"PlaylistDetail", "GET", "/playlist/detail", PlayListDetail},
 	}
 	return routes
 }

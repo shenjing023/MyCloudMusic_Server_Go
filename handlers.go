@@ -52,13 +52,22 @@ func (r *Resource) parseArgs(values map[string][]string) []string {
 }
 
 var search Resource
+var playList Resource
+var playListDetail Resource
 
 func init() {
+	// 搜索
 	search.addArgument("source", "string")
 	search.addArgument("keywords", "string")
 	search.addArgument("ktype", "int")
 	search.addArgument("offset", "int")
 	search.addArgument("limit", "int")
+	// 歌单
+	playList.addArgument("source", "string")
+	//playList.addArgument("")
+	// 歌单详情
+	playListDetail.addArgument("source", "string")
+	playListDetail.addArgument("id", "string")
 }
 
 func (arg *Argument) parse(values []string) (string, error) {
@@ -89,6 +98,49 @@ func Search(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		var response []byte
 		if source == "netease" {
 			response, _ = api.NetEase.Search(keywords, ktype, offset, limit)
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
+	}
+}
+
+// 歌单
+func PlayList(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errorMsg := playList.parseArgs(r.URL.Query()); errorMsg != nil {
+		fmt.Fprint(w, errorMsg)
+	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+		category := queryValues.Get("cat")
+		order := queryValues.Get("order")
+		offset, _ := strconv.Atoi(queryValues.Get("offset"))
+		limit, _ := strconv.Atoi(queryValues.Get("limit"))
+
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.Playlists(category, order, offset, limit)
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
+	}
+}
+
+// 歌单详情
+func PlayListDetail(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errorMsg := playListDetail.parseArgs(r.URL.Query()); errorMsg != nil {
+		fmt.Fprint(w, errorMsg)
+	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+		id := queryValues.Get("id")
+
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.PlaylistDetail(id)
 		} else {
 
 		}

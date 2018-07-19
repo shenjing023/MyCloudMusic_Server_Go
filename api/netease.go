@@ -6,6 +6,8 @@ package api
 
 import (
 	"MyCloudMusic_Server_Go/mylog"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -76,29 +78,121 @@ func (n *NetEaseApi) rawHttpRequest(method, url string, param map[string]interfa
 	resp, err := n.client.Do(req)
 	if err != nil {
 		mylog.Error(err.Error())
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return ioutil.ReadAll(resp.Body)
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		mylog.Error(err.Error())
+		return nil, err
+	}
+	return respBody, nil
 }
 
 /*
 	搜索单曲(1)，歌手(100)，专辑(10)，歌单(1000)，用户(1002) *(type)*
 */
-func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) ([]byte, error) {
+func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) (string, error) {
 	url := "http://music.163.com/weapi/search/get"
-	var total bool
+	var total string
 	if offset == 0 {
-		total = true
+		total = "true"
 	} else {
-		total = false
+		total = "false"
 	}
-	data := map[string]interface{}{
+	params := map[string]interface{}{
 		"s":      keywords,
 		"type":   ktype,
 		"offset": offset,
 		"total":  total,
 		"limit":  limit,
 	}
-	return n.rawHttpRequest("POST", url, data)
+	return n.rawHttpRequest("POST", url, params)
+}
+
+/*
+	歌单（网友精选碟）
+*/
+func (n *NetEaseApi) Playlists(category string, order string, offset int, limit int) (string, error) {
+	url := "http://music.163.com/weapi/playlist/list"
+	params := map[string]interface{}{
+		"cat":    category,
+		"order":  order,
+		"offset": offset,
+		"total":  "true",
+		"limit":  limit,
+	}
+	return n.rawHttpRequest("POST", url, params)
+}
+
+/*
+	根据歌单id获取歌单详情，返回歌单名称，歌单图片url，歌单作者，歌曲总数，歌单播放数，分享总数，
+	收藏总数，还有每首歌的歌名，歌手，专辑，音乐id
+	使用新版本v3接口，
+*/
+func (n *NetEaseApi) PlaylistDetail(playlistId string) (string, error) {
+	url := "http://music.163.com/weapi/v3/playlist/detail"
+	params := map[string]interface{}{
+		"id":         playlistId,
+		"total":      "true",
+		"limit":      1000,
+		"n":          1000,
+		"offset":     0,
+		"csrf_token": "",
+	}
+	respByte, err := n.rawHttpRequest("POST", url, params)
+	if err != nil {
+		return "", err
+	}
+	var resp map[string]interface{}
+	if err = json.Unmarshal(respByte, &resp); err != nil {
+		return "", err
+	}
+	// 解析
+	var songs []map[string]interface{} //每首歌信息
+
+	for _, item := range resp["playlist"].(map[string]interface{})["tracks"].([]interface{}) {
+
+	}
+}
+
+/*
+	根据歌曲id获取歌曲url
+*/
+func (n *NetEaseApi) SongUrl(songId string) ([]byte, error) {
+	url := "http://music.163.com/weapi/v3/song/detail"
+	params := map[string]interface{}{
+		"ids":        songId,
+		"c":          "[{id:" + songId + "}]",
+		"csrf_token": "",
+	}
+	return n.rawHttpRequest("POST", url, params)
+}
+
+/*
+	专辑
+*/
+func (n *NetEaseApi) Album(albumId string) ([]byte, error) {
+	url := fmt.Sprintf("http://music.163.com/weapi/v1/album/%s", albumId)
+	params := map[string]interface{}{
+		"id":         albumId,
+		"csrf_token": "",
+	}
+	return n.rawHttpRequest("POST", url, params)
+}
+
+/*
+	歌词
+*/
+func (n *NetEaseApi) Lyric(songId string) ([]byte, error) {
+	url := "http://music.163.com/weapi/song/lyric"
+	params := map[string]interface{}{
+		"id": songId,
+		"os": "osx",
+		"lv": -1,
+		"kv": -1,
+		"tv": -1,
+	}
+	return n.rawHttpRequest("POST", url, params)
 }
