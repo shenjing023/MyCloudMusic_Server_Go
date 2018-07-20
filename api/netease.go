@@ -93,7 +93,7 @@ func (n *NetEaseApi) rawHttpRequest(method, url string, param map[string]interfa
 /*
 	搜索单曲(1)，歌手(100)，专辑(10)，歌单(1000)，用户(1002) *(type)*
 */
-func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) (string, error) {
+func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) ([]byte, error) {
 	url := "http://music.163.com/weapi/search/get"
 	var total string
 	if offset == 0 {
@@ -114,7 +114,7 @@ func (n *NetEaseApi) Search(keywords string, ktype, offset, limit int) (string, 
 /*
 	歌单（网友精选碟）
 */
-func (n *NetEaseApi) Playlists(category string, order string, offset int, limit int) (string, error) {
+func (n *NetEaseApi) Playlists(category string, order string, offset int, limit int) ([]byte, error) {
 	url := "http://music.163.com/weapi/playlist/list"
 	params := map[string]interface{}{
 		"cat":    category,
@@ -131,7 +131,7 @@ func (n *NetEaseApi) Playlists(category string, order string, offset int, limit 
 	收藏总数，还有每首歌的歌名，歌手，专辑，音乐id
 	使用新版本v3接口，
 */
-func (n *NetEaseApi) PlaylistDetail(playlistId string) (string, error) {
+func (n *NetEaseApi) PlaylistDetail(playlistId string) ([]byte, error) {
 	url := "http://music.163.com/weapi/v3/playlist/detail"
 	params := map[string]interface{}{
 		"id":         playlistId,
@@ -143,18 +143,57 @@ func (n *NetEaseApi) PlaylistDetail(playlistId string) (string, error) {
 	}
 	respByte, err := n.rawHttpRequest("POST", url, params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+
 	var resp map[string]interface{}
 	if err = json.Unmarshal(respByte, &resp); err != nil {
-		return "", err
+		return nil, err
 	}
 	// 解析
+	playlist := resp["playlist"].(map[string]interface{})
 	var songs []map[string]interface{} //每首歌信息
 
 	for _, item := range resp["playlist"].(map[string]interface{})["tracks"].([]interface{}) {
+		dict := item.(map[string]interface{})
+		songName := dict["name"] //音乐名称
+		// 歌手
+		var singers string
+		for _, singer := range dict["ar"].([]interface{}) {
+			singers = singer.(map[string]interface{})["name"].(string)
+			singers += "/"
+		}
+		singers = singers[:len(singers)-1]
+		// 专辑、图片url
+		album := dict["al"].(map[string]interface{})["name"].(string)
+		picUrl := dict["al"].(map[string]interface{})["picUrl"].(string)
+		// 歌曲id
+		songId := dict["id"].(float64)
+		// 歌曲长度
+		songLength := int(dict["dt"].(float64) / 1000)
 
+		song := map[string]interface{}{
+			"song_name":   songName,
+			"singers":     singers,
+			"album_name":  album,
+			"song_id":     songId,
+			"pic_url":     picUrl,
+			"song_length": songLength,
+		}
+		songs = append(songs, song)
 	}
+	data := map[string]interface{}{
+		"type":           "netease",
+		"name":           playlist["name"].(string),
+		"pic":            playlist["coverImgUrl"].(string),
+		"user":           playlist["creator"].(map[string]interface{})["nickname"].(string),
+		"songs_count":    playlist["trackCount"].(float64),
+		"play_count":     playlist["playCount"].(float64),
+		"share_count":    playlist["shareCount"].(float64),
+		"favorite_count": playlist["subscribedCount"].(float64),
+		"songs":          songs,
+	}
+	return json.Marshal(data)
 }
 
 /*
