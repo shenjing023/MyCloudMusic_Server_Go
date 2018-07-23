@@ -113,10 +113,20 @@ func PlayList(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	} else {
 		queryValues := r.URL.Query()
 		source := queryValues.Get("source")
-		category := queryValues.Get("cat")
-		order := queryValues.Get("order")
-		offset, _ := strconv.Atoi(queryValues.Get("offset"))
-		limit, _ := strconv.Atoi(queryValues.Get("limit"))
+		var category, order string
+		var offset, limit int
+		if category = queryValues.Get("cat"); category == "" {
+			category = "全部"
+		}
+		if order = queryValues.Get("order"); order == "" {
+			order = "hot"
+		}
+		if offset, _ = strconv.Atoi(queryValues.Get("offset")); offset == 0 {
+			offset = 0
+		}
+		if limit, _ = strconv.Atoi(queryValues.Get("limit")); limit == 0 {
+			limit = 50
+		}
 
 		var response []byte
 		if source == "netease" {

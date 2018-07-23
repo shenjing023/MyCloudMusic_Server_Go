@@ -123,7 +123,27 @@ func (n *NetEaseApi) Playlists(category string, order string, offset int, limit 
 		"total":  "true",
 		"limit":  limit,
 	}
-	return n.rawHttpRequest("POST", url, params)
+	respByte, err := n.rawHttpRequest("POST", url, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp map[string]interface{}
+	var playlists []map[string]interface{}
+	if err = json.Unmarshal(respByte, &resp); err != nil {
+		return nil, err
+	}
+	// 解析
+	for _, item := range resp["playlists"].([]interface{}) {
+		dict := item.(map[string]interface{})
+		playlist := map[string]interface{}{
+			"collect_name": dict["name"].(string),
+			"list_id":      dict["id"].(float64),
+			"logo":         dict["coverImgUrl"].(string),
+		}
+		playlists = append(playlists, playlist)
+	}
+	return json.Marshal(playlists)
 }
 
 /*
