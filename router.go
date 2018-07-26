@@ -24,6 +24,8 @@ func allRoutes() Routes {
 		Route{"Search", "GET", "/search", Search},
 		Route{"Playlist", "GET", "/playlists", PlayList},
 		Route{"PlaylistDetail", "GET", "/playlist/detail", PlayListDetail},
+		Route{"SongUrl", "GET", "/music/url", SongUrl},
+		Route{"PersonFM", "GET", "/personfm", PersonFM},
 	}
 	return routes
 }

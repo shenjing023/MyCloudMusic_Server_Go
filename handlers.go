@@ -51,9 +51,11 @@ func (r *Resource) parseArgs(values map[string][]string) []string {
 	return errorMsg
 }
 
-var search Resource
-var playList Resource
-var playListDetail Resource
+var search Resource         //搜索
+var playList Resource       //歌单
+var playListDetail Resource //歌单详情
+var songUrl Resource        //歌曲url
+var personFM Resource       //私人fm
 
 func init() {
 	// 搜索
@@ -68,6 +70,11 @@ func init() {
 	// 歌单详情
 	playListDetail.addArgument("source", "string")
 	playListDetail.addArgument("id", "string")
+
+	songUrl.addArgument("source", "string")
+	songUrl.addArgument("id", "string")
+
+	personFM.addArgument("source", "string")
 }
 
 func (arg *Argument) parse(values []string) (string, error) {
@@ -151,6 +158,43 @@ func PlayListDetail(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 		var response []byte
 		if source == "netease" {
 			response, _ = api.NetEase.PlaylistDetail(id)
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
+	}
+}
+
+func SongUrl(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errMsg := songUrl.parseArgs(r.URL.Query()); errMsg != nil {
+		fmt.Fprint(w, errMsg)
+	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+		id := queryValues.Get("id")
+
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.SongUrl(id)
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
+	}
+}
+
+func PersonFM(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errMsg := personFM.parseArgs(r.URL.Query()); errMsg != nil {
+		fmt.Fprint(w, errMsg)
+	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.PersonFM()
 		} else {
 
 		}

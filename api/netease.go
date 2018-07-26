@@ -220,13 +220,28 @@ func (n *NetEaseApi) PlaylistDetail(playlistId string) ([]byte, error) {
 	根据歌曲id获取歌曲url
 */
 func (n *NetEaseApi) SongUrl(songId string) ([]byte, error) {
-	url := "http://music.163.com/weapi/v3/song/detail"
+	url := "http://music.163.com/weapi/song/enhance/player/url"
 	params := map[string]interface{}{
-		"ids":        songId,
-		"c":          "[{id:" + songId + "}]",
+		"ids":        []string{songId},
+		"br":         320000,
 		"csrf_token": "",
 	}
-	return n.rawHttpRequest("POST", url, params)
+
+	respByte, err := n.rawHttpRequest("POST", url, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp map[string]interface{}
+	if err = json.Unmarshal(respByte, &resp); err != nil {
+		return nil, err
+	}
+
+	//解析
+	data := map[string]string{
+		"song_url": resp["data"].([]interface{})[0].(map[string]interface{})["url"].(string),
+	}
+	return json.Marshal(data)
 }
 
 /*
@@ -252,6 +267,17 @@ func (n *NetEaseApi) Lyric(songId string) ([]byte, error) {
 		"lv": -1,
 		"kv": -1,
 		"tv": -1,
+	}
+	return n.rawHttpRequest("POST", url, params)
+}
+
+/*
+	私人FM
+*/
+func (n *NetEaseApi) PersonFM() ([]byte, error) {
+	url := "http://music.163.com/weapi/v1/radio/get"
+	params := map[string]interface{}{
+		"csrf_token": "",
 	}
 	return n.rawHttpRequest("POST", url, params)
 }
