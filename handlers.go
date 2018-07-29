@@ -56,6 +56,7 @@ var playList Resource       //歌单
 var playListDetail Resource //歌单详情
 var songUrl Resource        //歌曲url
 var personFM Resource       //私人fm
+var lyric Resource          //歌词
 
 func init() {
 	// 搜索
@@ -75,6 +76,8 @@ func init() {
 	songUrl.addArgument("id", "string")
 
 	personFM.addArgument("source", "string")
+
+	lyric.addArgument("source", "string")
 }
 
 func (arg *Argument) parse(values []string) (string, error) {
@@ -195,6 +198,25 @@ func PersonFM(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		var response []byte
 		if source == "netease" {
 			response, _ = api.NetEase.PersonFM()
+		} else {
+
+		}
+
+		fmt.Fprint(w, string(response))
+	}
+}
+
+func Lyric(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if errMsg := lyric.parseArgs(r.URL.Query()); errMsg != nil {
+		fmt.Fprint(w, errMsg)
+	} else {
+		queryValues := r.URL.Query()
+		source := queryValues.Get("source")
+		id := queryValues.Get("id")
+
+		var response []byte
+		if source == "netease" {
+			response, _ = api.NetEase.Lyric(id)
 		} else {
 
 		}

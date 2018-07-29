@@ -6,11 +6,13 @@ package api
 
 import (
 	"MyCloudMusic_Server_Go/mylog"
+	"MyCloudMusic_Server_Go/utils"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -31,7 +33,7 @@ func init() {
 			"Content-Type":     "application/x-www-form-urlencoded",
 			"Host":             "music.163.com",
 			"Referer":          "http://music.163.com",
-			"User-Agent":       "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+			//"User-Agent":       "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
 		},
 		client: &http.Client{
 			Timeout: 15 * time.Second,
@@ -63,6 +65,7 @@ func (n *NetEaseApi) newRequest(method, _url string, param map[string]interface{
 	for k, v := range n.header {
 		req.Header.Set(k, v)
 	}
+	req.Header.Set("User-Agent", utils.GetUserAgent())
 
 	return req, nil
 }
@@ -87,6 +90,7 @@ func (n *NetEaseApi) rawHttpRequest(method, url string, param map[string]interfa
 		mylog.Error(err.Error())
 		return nil, err
 	}
+
 	return respBody, nil
 }
 
@@ -268,7 +272,28 @@ func (n *NetEaseApi) Lyric(songId string) ([]byte, error) {
 		"kv": -1,
 		"tv": -1,
 	}
-	return n.rawHttpRequest("POST", url, params)
+	respByte, err := n.rawHttpRequest("POST", url, params)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp map[string]interface{}
+	if err = json.Unmarshal(respByte, &resp); err != nil {
+		return nil, err
+	}
+
+	// 解析
+	var lrc interface{}
+	if resp["lrc"] == nil { //没有歌词
+		lrc = ""
+	} else {
+		lrc = resp["lrc"].(map[string]interface{})["lyric"]
+	}
+	data := map[string]interface{}{
+		"lyric": lrc,
+	}
+
+	return json.Marshal(data)
 }
 
 /*
@@ -279,5 +304,63 @@ func (n *NetEaseApi) PersonFM() ([]byte, error) {
 	params := map[string]interface{}{
 		"csrf_token": "",
 	}
-	return n.rawHttpRequest("POST", url, params)
+
+	respByte, err := n.rawHttpRequest("POST", url, params)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	var resp map[string]interface{}
+	if err = json.Unmarshal(respByte, &resp); err != nil {
+		return nil, err
+	}
+
+	// 解析
+	// 歌曲信息
+	if resp["data"] == nil {
+		// 休眠1秒
+		time.Sleep(time.Duration(1) * time.Second)
+		mylog.Info("私人fm: 没有歌曲信息")
+		return n.PersonFM()
+	}
+	var songInfo = resp["data"].([]interface{})[0].(map[string]interface{})
+	// 专辑图片url
+	picUrl := songInfo["album"].(map[string]interface{})["picUrl"]
+	// 专辑名
+	albumName := songInfo["album"].(map[string]interface{})["name"]
+	// 歌手
+	var singer []string
+	for _, item := range songInfo["artists"].([]interface{}) {
+		singer = append(singer, item.(map[string]interface{})["name"].(string))
+	}
+	data := map[string]interface{}{
+		"name":     songInfo["name"],
+		"duration": int(songInfo["duration"].(float64) / 1000),
+		"album":    albumName,
+		"picUrl":   picUrl,
+		"singer":   strings.Join(singer, ","),
+		"lyric":    "",
+		"id":       songInfo["id"],
+	}
+	// 获取歌词
+	lyric, err := n.Lyric(strconv.Itoa(int(songInfo["id"].(float64))))
+	if err != nil {
+
+	} else {
+		var lrc map[string]interface{}
+		json.Unmarshal(lyric, &lrc)
+		data["lyric"] = lrc["lyric"].(string)
+	}
+	// 获取歌曲url
+	//songUrl, err := n.SongUrl(strconv.Itoa(int(songInfo["id"].(float64))))
+	//if err != nil {
+	//
+	//} else {
+	//	var url map[string]interface{}
+	//	json.Unmarshal(songUrl, &url)
+	//	data["url"] = url["song_url"].(string)
+	//}
+
+	return json.Marshal(data)
 }
